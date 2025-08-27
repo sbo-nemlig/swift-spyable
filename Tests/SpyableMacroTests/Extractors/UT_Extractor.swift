@@ -39,25 +39,57 @@ final class UT_Extractor: XCTestCase {
     XCTAssertEqual(unwrappedReceivedError, .onlyApplicableToProtocol)
   }
 
-  // MARK: - extractInheritedType Tests
+  // MARK: - extractInheritedTypesArray Tests
   
-  func test_extractInheritedType_withValidStringLiteral_returnsValue() {
+  func test_extractInheritedTypesArray_withValidStringLiteral_returnsArrayWithSingleValue() {
     // Given
     let attribute = AttributeSyntax(
       """
-      @Spyable(inheritedType: "BaseClass")
+      @Spyable(inheritedTypes: "BaseClass")
       """
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
-    XCTAssertEqual(result, "BaseClass")
+    XCTAssertEqual(result, ["BaseClass"])
     XCTAssertTrue(mockContext.diagnostics.isEmpty)
   }
   
-  func test_extractInheritedType_withNoArguments_returnsNil() {
+  func test_extractInheritedTypesArray_withValidStringArray_returnsArray() {
+    // Given
+    let attribute = AttributeSyntax(
+      """
+      @Spyable(inheritedTypes: ["BaseClass", "Protocol"])
+      """
+    )
+    
+    // When
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
+    
+    // Then
+    XCTAssertEqual(result, ["BaseClass", "Protocol"])
+    XCTAssertTrue(mockContext.diagnostics.isEmpty)
+  }
+  
+  func test_extractInheritedTypesArray_withEmptyArray_returnsEmptyArray() {
+    // Given
+    let attribute = AttributeSyntax(
+      """
+      @Spyable(inheritedTypes: [])
+      """
+    )
+    
+    // When
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
+    
+    // Then
+    XCTAssertEqual(result, [])
+    XCTAssertTrue(mockContext.diagnostics.isEmpty)
+  }
+  
+  func test_extractInheritedTypesArray_withNoArguments_returnsNil() {
     // Given
     let attribute = AttributeSyntax(
       """
@@ -66,14 +98,14 @@ final class UT_Extractor: XCTestCase {
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
     XCTAssertNil(result)
     XCTAssertTrue(mockContext.diagnostics.isEmpty)
   }
   
-  func test_extractInheritedType_withMissingInheritedTypeArgument_returnsNil() {
+  func test_extractInheritedTypesArray_withMissingInheritedTypesArgument_returnsNil() {
     // Given
     let attribute = AttributeSyntax(
       """
@@ -82,63 +114,119 @@ final class UT_Extractor: XCTestCase {
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
     XCTAssertNil(result)
     XCTAssertTrue(mockContext.diagnostics.isEmpty)
   }
   
-  func test_extractInheritedType_withNonStringLiteral_returnsNilAndDiagnoses() {
+  func test_extractInheritedTypesArray_withNonStringLiteralInArray_returnsNilAndDiagnoses() {
     // Given
     let attribute = AttributeSyntax(
       """
-      @Spyable(inheritedType: someVariable)
+      @Spyable(inheritedTypes: [someVariable])
       """
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
     XCTAssertNil(result)
     XCTAssertEqual(mockContext.diagnostics.count, 1)
     XCTAssertEqual(
       mockContext.diagnostics.first?.message,
-      SpyableDiagnostic.inheritedTypeArgumentRequiresStaticStringLiteral.message
+      SpyableDiagnostic.inheritedTypesArgumentRequiresStaticStringArray.message
     )
   }
   
-  func test_extractInheritedType_withEmptyString_returnsEmptyString() {
+  func test_extractInheritedTypesArray_withNonStringArray_returnsNilAndDiagnoses() {
     // Given
     let attribute = AttributeSyntax(
       """
-      @Spyable(inheritedType: "")
+      @Spyable(inheritedTypes: someVariable)
       """
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
-    XCTAssertEqual(result, "")
-    XCTAssertTrue(mockContext.diagnostics.isEmpty)
+    XCTAssertNil(result)
+    XCTAssertEqual(mockContext.diagnostics.count, 1)
+    XCTAssertEqual(
+      mockContext.diagnostics.first?.message,
+      SpyableDiagnostic.inheritedTypesArgumentRequiresStaticStringArray.message
+    )
   }
   
-  func test_extractInheritedType_withComplexClassName_returnsValue() {
+  func test_extractInheritedTypesArray_withEmptyString_returnsArrayWithEmptyString() {
     // Given
     let attribute = AttributeSyntax(
       """
-      @Spyable(inheritedType: "MyModule.BaseClass<T>")
+      @Spyable(inheritedTypes: "")
       """
     )
     
     // When
-    let result = Extractor().extractInheritedType(from: attribute, in: mockContext)
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
     
     // Then
-    XCTAssertEqual(result, "MyModule.BaseClass<T>")
+    XCTAssertEqual(result, [""])
     XCTAssertTrue(mockContext.diagnostics.isEmpty)
+  }
+  
+  func test_extractInheritedTypesArray_withComplexClassName_returnsArrayWithValue() {
+    // Given
+    let attribute = AttributeSyntax(
+      """
+      @Spyable(inheritedTypes: "MyModule.BaseClass<T>")
+      """
+    )
+    
+    // When
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
+    
+    // Then
+    XCTAssertEqual(result, ["MyModule.BaseClass<T>"])
+    XCTAssertTrue(mockContext.diagnostics.isEmpty)
+  }
+  
+  func test_extractInheritedTypesArray_withMultipleComplexClassNames_returnsArray() {
+    // Given
+    let attribute = AttributeSyntax(
+      """
+      @Spyable(inheritedTypes: ["MyModule.BaseClass<T>", "AnotherModule.Protocol", "SimpleClass"])
+      """
+    )
+    
+    // When
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
+    
+    // Then
+    XCTAssertEqual(result, ["MyModule.BaseClass<T>", "AnotherModule.Protocol", "SimpleClass"])
+    XCTAssertTrue(mockContext.diagnostics.isEmpty)
+  }
+  
+  func test_extractInheritedTypesArray_withMixedValidInvalidElements_returnsNilAndDiagnoses() {
+    // Given
+    let attribute = AttributeSyntax(
+      """
+      @Spyable(inheritedTypes: ["ValidClass", someVariable])
+      """
+    )
+    
+    // When
+    let result = Extractor().extractInheritedTypesArray(from: attribute, in: mockContext)
+    
+    // Then
+    XCTAssertNil(result)
+    XCTAssertEqual(mockContext.diagnostics.count, 1)
+    XCTAssertEqual(
+      mockContext.diagnostics.first?.message,
+      SpyableDiagnostic.inheritedTypesArgumentRequiresStaticStringArray.message
+    )
   }
 }
 

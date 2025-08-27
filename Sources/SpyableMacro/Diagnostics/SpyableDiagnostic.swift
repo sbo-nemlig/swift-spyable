@@ -14,7 +14,7 @@ enum SpyableDiagnostic: String, DiagnosticMessage, Error {
   case behindPreprocessorFlagArgumentRequiresStaticStringLiteral
   case accessLevelArgumentRequiresMemberAccessExpression
   case accessLevelArgumentUnsupportedAccessLevel
-  case inheritedTypeArgumentRequiresStaticStringLiteral
+  case inheritedTypesArgumentRequiresStaticStringArray
 
   /// Provides a human-readable diagnostic message for each diagnostic case.
   var message: String {
@@ -31,8 +31,8 @@ enum SpyableDiagnostic: String, DiagnosticMessage, Error {
       "The `accessLevel` argument requires a member access expression"
     case .accessLevelArgumentUnsupportedAccessLevel:
       "The `accessLevel` argument does not support the specified access level"
-    case .inheritedTypeArgumentRequiresStaticStringLiteral:
-      "The `inheritedType` argument requires a static string literal"
+    case .inheritedTypesArgumentRequiresStaticStringArray:
+      "The `inheritedTypes` argument requires an array of static string literals"
     }
   }
 
@@ -45,7 +45,7 @@ enum SpyableDiagnostic: String, DiagnosticMessage, Error {
       .behindPreprocessorFlagArgumentRequiresStaticStringLiteral,
       .accessLevelArgumentRequiresMemberAccessExpression,
       .accessLevelArgumentUnsupportedAccessLevel,
-      .inheritedTypeArgumentRequiresStaticStringLiteral:
+      .inheritedTypesArgumentRequiresStaticStringArray:
       .error
     }
   }

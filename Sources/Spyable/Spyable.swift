@@ -137,7 +137,7 @@
 public macro Spyable(
   behindPreprocessorFlag: String? = nil,
   accessLevel: SpyAccessLevel? = nil,
-  inheritedType: String? = nil
+  inheritedTypes: [String]? = nil
 ) =
   #externalMacro(
     module: "SpyableMacro",
@@ -151,4 +151,5 @@ public enum SpyAccessLevel {
   case `internal`
   case `fileprivate`
   case `private`
+  case `open`
 }

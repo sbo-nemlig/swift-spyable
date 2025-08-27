@@ -94,7 +94,7 @@ struct SpyFactory {
 
   func classDeclaration(
     for protocolDeclaration: ProtocolDeclSyntax,
-    inheritedType: String? = nil
+    inheritedTypes: [String]? = nil
   ) throws -> ClassDeclSyntax {
     let identifier = TokenSyntax.identifier(protocolDeclaration.name.text + "Spy")
 
@@ -120,11 +120,13 @@ struct SpyFactory {
       name: identifier,
       genericParameterClause: genericParameterClause,
       inheritanceClause: InheritanceClauseSyntax {
-        // Add inherited type first if present
-        if let inheritedType {
-          InheritedTypeSyntax(
-            type: TypeSyntax(stringLiteral: inheritedType)
-          )
+        // Add all inherited types first if present
+        if let inheritedTypes {
+          for t in inheritedTypes {
+            InheritedTypeSyntax(
+              type: TypeSyntax(stringLiteral: t)
+            )
+          }
         }
 
         // Add the main protocol
@@ -136,7 +138,7 @@ struct SpyFactory {
         )
       },
       memberBlockBuilder: {
-        let initOverrideKeyword: DeclModifierListSyntax = inheritedType != nil ? [DeclModifierSyntax(name: .keyword(.override))] : []
+        let initOverrideKeyword: DeclModifierListSyntax = inheritedTypes != nil && !inheritedTypes!.isEmpty ? [DeclModifierSyntax(name: .keyword(.override))] : []
 
         InitializerDeclSyntax(
           modifiers: initOverrideKeyword,

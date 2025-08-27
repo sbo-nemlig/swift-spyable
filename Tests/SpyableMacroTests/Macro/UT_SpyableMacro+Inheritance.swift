@@ -62,7 +62,7 @@ final class UT_SpyableMacroInheritance: XCTestCase {
 
     assertMacroExpansion(
       """
-      @Spyable(accessLevel: .open, inheritedType: "BaseServiceSpy")
+      @Spyable(accessLevel: .open, inheritedTypes: ["BaseServiceSpy"])
       \(protocolDeclaration)
       """,
       expandedSource: """
@@ -282,6 +282,155 @@ final class UT_SpyableMacroInheritance: XCTestCase {
                 fetchUsernameContextCompletionReceivedArguments = (context, completion)
                 fetchUsernameContextCompletionReceivedInvocations.append((context, completion))
                 fetchUsernameContextCompletionClosure?(context, completion)
+            }
+        }
+        """,
+      macros: sut
+    )
+  }
+
+  func testMacroWithOpenAccessLevelAndMultipleInheritedTypes() {
+    let protocolDeclaration = """
+      protocol ServiceProtocol {
+          var removed: (() -> Void)? { get set }
+
+          func fetchUsername(context: String, completion: @escaping (String) -> Void)
+      }
+      """
+
+    assertMacroExpansion(
+      """
+      @Spyable(accessLevel: .open, inheritedTypes: ["BaseServiceSpy", "SomeProtocol"])
+      \(protocolDeclaration)
+      """,
+      expandedSource: """
+
+        \(protocolDeclaration)
+
+        open class ServiceProtocolSpy: BaseServiceSpy, SomeProtocol, ServiceProtocol, @unchecked Sendable {
+            override public init() {
+            }
+            open
+            var removed: (() -> Void)?
+            open var fetchUsernameContextCompletionCallsCount = 0
+            open var fetchUsernameContextCompletionCalled: Bool {
+                return fetchUsernameContextCompletionCallsCount > 0
+            }
+            open var fetchUsernameContextCompletionReceivedArguments: (context: String, completion: (String) -> Void)?
+            open var fetchUsernameContextCompletionReceivedInvocations: [(context: String, completion: (String) -> Void)] = []
+            open var fetchUsernameContextCompletionClosure: ((String, @escaping (String) -> Void) -> Void)?
+            open
+
+            func fetchUsername(context: String, completion: @escaping (String) -> Void) {
+                fetchUsernameContextCompletionCallsCount += 1
+                fetchUsernameContextCompletionReceivedArguments = (context, completion)
+                fetchUsernameContextCompletionReceivedInvocations.append((context, completion))
+                fetchUsernameContextCompletionClosure?(context, completion)
+            }
+        }
+        """,
+      macros: sut
+    )
+  }
+
+  func testMacroWithEmptyInheritedTypesArray() {
+    let protocolDeclaration = """
+      protocol ServiceProtocol {
+          func doSomething()
+      }
+      """
+
+    assertMacroExpansion(
+      """
+      @Spyable(accessLevel: .open, inheritedTypes: [])
+      \(protocolDeclaration)
+      """,
+      expandedSource: """
+
+        \(protocolDeclaration)
+
+        open class ServiceProtocolSpy: ServiceProtocol, @unchecked Sendable {
+            public init() {
+            }
+            open var doSomethingCallsCount = 0
+            open var doSomethingCalled: Bool {
+                return doSomethingCallsCount > 0
+            }
+            open var doSomethingClosure: (() -> Void)?
+            open
+            func doSomething() {
+                doSomethingCallsCount += 1
+                doSomethingClosure?()
+            }
+        }
+        """,
+      macros: sut
+    )
+  }
+
+  func testMacroWithSingleStringInheritedTypeBackwardCompatibility() {
+    let protocolDeclaration = """
+      protocol ServiceProtocol {
+          func doSomething()
+      }
+      """
+
+    assertMacroExpansion(
+      """
+      @Spyable(accessLevel: .open, inheritedTypes: "BaseServiceSpy")
+      \(protocolDeclaration)
+      """,
+      expandedSource: """
+
+        \(protocolDeclaration)
+
+        open class ServiceProtocolSpy: BaseServiceSpy, ServiceProtocol, @unchecked Sendable {
+            override public init() {
+            }
+            open var doSomethingCallsCount = 0
+            open var doSomethingCalled: Bool {
+                return doSomethingCallsCount > 0
+            }
+            open var doSomethingClosure: (() -> Void)?
+            open
+            func doSomething() {
+                doSomethingCallsCount += 1
+                doSomethingClosure?()
+            }
+        }
+        """,
+      macros: sut
+    )
+  }
+
+  func testMacroWithComplexInheritedTypes() {
+    let protocolDeclaration = """
+      protocol ServiceProtocol {
+          func doSomething()
+      }
+      """
+
+    assertMacroExpansion(
+      """
+      @Spyable(accessLevel: .open, inheritedTypes: ["MyModule.BaseService<T>", "AnotherProtocol"])
+      \(protocolDeclaration)
+      """,
+      expandedSource: """
+
+        \(protocolDeclaration)
+
+        open class ServiceProtocolSpy: MyModule.BaseService<T>, AnotherProtocol, ServiceProtocol, @unchecked Sendable {
+            override public init() {
+            }
+            open var doSomethingCallsCount = 0
+            open var doSomethingCalled: Bool {
+                return doSomethingCallsCount > 0
+            }
+            open var doSomethingClosure: (() -> Void)?
+            open
+            func doSomething() {
+                doSomethingCallsCount += 1
+                doSomethingClosure?()
             }
         }
         """,

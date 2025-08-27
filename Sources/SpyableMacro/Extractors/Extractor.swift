@@ -15,7 +15,7 @@ struct Extractor {
     }
     return protocolDeclaration
   }
-
+  
   /// Extracts a preprocessor flag value from an attribute if present and valid.
   ///
   /// This method searches for an argument labeled `behindPreprocessorFlag` within the
@@ -36,23 +36,23 @@ struct Extractor {
       // No arguments are present in the attribute.
       return nil
     }
-
+    
     let behindPreprocessorFlagArgument = argumentList.first { argument in
       argument.label?.text == "behindPreprocessorFlag"
     }
-
+    
     guard let behindPreprocessorFlagArgument else {
       // The `behindPreprocessorFlag` argument is missing.
       return nil
     }
-
+    
     let segments = behindPreprocessorFlagArgument.expression
       .as(StringLiteralExprSyntax.self)?
       .segments
-
+    
     guard let segments,
-      segments.count == 1,
-      case let .stringSegment(literalSegment)? = segments.first
+          segments.count == 1,
+          case let .stringSegment(literalSegment)? = segments.first
     else {
       // The `behindPreprocessorFlag` argument's value is not a static string literal.
       context.diagnose(
@@ -70,10 +70,10 @@ struct Extractor {
       )
       return nil
     }
-
+    
     return literalSegment.content.text
   }
-
+  
   func extractAccessLevel(
     from attribute: AttributeSyntax,
     in context: some MacroExpansionContext
@@ -82,16 +82,16 @@ struct Extractor {
       // No arguments are present in the attribute.
       return nil
     }
-
+    
     let accessLevelArgument = argumentList.first { argument in
       argument.label?.text == "accessLevel"
     }
-
+    
     guard let accessLevelArgument else {
       // The `accessLevel` argument is missing.
       return nil
     }
-
+    
     guard let memberAccess = accessLevelArgument.expression.as(MemberAccessExprSyntax.self) else {
       context.diagnose(
         Diagnostic(
@@ -102,28 +102,28 @@ struct Extractor {
       )
       return nil
     }
-
+    
     let accessLevelText = memberAccess.declName.baseName.text
-
+    
     switch accessLevelText {
     case "open":
       return DeclModifierSyntax(name: .keyword(.open))
-
+      
     case "public":
       return DeclModifierSyntax(name: .keyword(.public))
-
+      
     case "package":
       return DeclModifierSyntax(name: .keyword(.package))
-
+      
     case "internal":
       return DeclModifierSyntax(name: .keyword(.internal))
-
+      
     case "fileprivate":
       return DeclModifierSyntax(name: .keyword(.fileprivate))
-
+      
     case "private":
       return DeclModifierSyntax(name: .keyword(.private))
-
+      
     default:
       context.diagnose(
         Diagnostic(
@@ -135,7 +135,7 @@ struct Extractor {
       return nil
     }
   }
-
+  
   /// Extracts the access level modifier from a protocol declaration.
   ///
   /// This method identifies the first access level modifier present in the protocol
@@ -148,61 +148,77 @@ struct Extractor {
   func extractAccessLevel(from protocolDeclSyntax: ProtocolDeclSyntax) -> DeclModifierSyntax? {
     protocolDeclSyntax.modifiers.first(where: \.name.isAccessLevelSupportedInProtocol)
   }
-
-  /// Extracts an inherited type value from an attribute if present and valid.
+  
+  /// Extracts an array of inherited type values from an attribute if present and valid.
   ///
-  /// This method searches for an argument labeled `inheritedType` within the
+  /// This method searches for an argument labeled `inheritedTypes` within the
   /// given attribute. If the argument is found, its value is validated to ensure it is
-  /// a static string literal.
+  /// an array of static string literals.
   ///
   /// - Parameters:
   ///   - attribute: The attribute syntax to analyze.
   ///   - context: The macro expansion context in which the operation is performed.
-  /// - Returns: The static string literal value of the `inheritedType` argument,
+  /// - Returns: The array of static string literal values of the `inheritedType` argument,
   ///   or `nil` if the argument is missing or invalid.
-  /// - Note: Diagnoses an error if the argument value is not a static string literal.
-  func extractInheritedType(
+  /// - Note: Diagnoses an error if the argument value is not a static string array.
+  func extractInheritedTypesArray(
     from attribute: AttributeSyntax,
     in context: some MacroExpansionContext
-  ) -> String? {
+  ) -> [String]? {
     guard case let .argumentList(argumentList) = attribute.arguments else {
       // No arguments are present in the attribute.
       return nil
     }
-
+    
     let inheritedTypeArgument = argumentList.first { argument in
-      argument.label?.text == "inheritedType"
+      argument.label?.text == "inheritedTypes"
     }
-
+    
     guard let inheritedTypeArgument else {
-      // The `inheritedType` argument is missing.
+      // The `inheritedTypes` argument is missing.
       return nil
     }
-
-    // Check if it's a string literal expression
-    let segments = inheritedTypeArgument.expression
-       .as(StringLiteralExprSyntax.self)?
-       .segments
-
-     guard let segments,
-       segments.count == 1,
-       case let .stringSegment(literalSegment)? = segments.first
-     else {
-       // The `inheritedType` argument's value is not a valid string literal.
-       context.diagnose(
-         Diagnostic(
-           node: attribute,
-           message: SpyableDiagnostic.inheritedTypeArgumentRequiresStaticStringLiteral,
-           highlights: [Syntax(inheritedTypeArgument.expression)]
-         )
-       )
-       return nil
-     }
-
-     return literalSegment.content.text
+    
+    // Check if it's an array expression
+    if let arrayExpr = inheritedTypeArgument.expression.as(ArrayExprSyntax.self) {
+      var result: [String] = []
+      for element in arrayExpr.elements {
+        guard let segs = element.expression.as(StringLiteralExprSyntax.self)?.segments,
+              segs.count == 1,
+              case let .stringSegment(literalSegment) = segs.first
+        else {
+          context.diagnose(
+            Diagnostic(
+              node: attribute,
+              message: SpyableDiagnostic.inheritedTypesArgumentRequiresStaticStringArray,
+              highlights: [Syntax(element.expression)]
+            )
+          )
+          return nil
+        }
+        result.append(literalSegment.content.text)
+      }
+      return result
+    }
+    
+    // If it's a single string literal, support for convenience (optional)
+    if let segs = inheritedTypeArgument.expression.as(StringLiteralExprSyntax.self)?.segments,
+       segs.count == 1,
+       case let .stringSegment(literalSegment) = segs.first {
+      return [literalSegment.content.text]
+    }
+    
+    // Invalid type
+    context.diagnose(
+      Diagnostic(
+        node: attribute,
+        message: SpyableDiagnostic.inheritedTypesArgumentRequiresStaticStringArray,
+        highlights: [Syntax(inheritedTypeArgument.expression)]
+      )
+    )
+    return nil
   }
 }
-
 extension TokenSyntax {
   /// Determines if the token represents a supported access level modifier for protocols.
   ///
