@@ -300,14 +300,14 @@ final class UT_SpyableMacroInheritance: XCTestCase {
 
     assertMacroExpansion(
       """
-      @Spyable(accessLevel: .open, inheritedTypes: ["BaseServiceSpy", "SomeProtocol"])
+      @Spyable(accessLevel: .open, inheritedTypes: ["BaseServiceSpy", "SomeProtocolSpy"])
       \(protocolDeclaration)
       """,
       expandedSource: """
 
         \(protocolDeclaration)
 
-        open class ServiceProtocolSpy: BaseServiceSpy, SomeProtocol, ServiceProtocol, @unchecked Sendable {
+        open class ServiceProtocolSpy: BaseServiceSpy, SomeProtocolSpy, ServiceProtocol, @unchecked Sendable {
             override public init() {
             }
             open

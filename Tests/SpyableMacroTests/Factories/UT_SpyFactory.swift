@@ -638,6 +638,111 @@ final class UT_SpyFactory: XCTestCase {
     )
   }
 
+  // MARK: - Multiple Inherited Types Tests
+
+  func testDeclarationWithSingleInheritedType() throws {
+    let protocolDeclaration = try ProtocolDeclSyntax("protocol Service { func fetch() }")
+    
+    let result = try SpyFactory().classDeclaration(
+      for: protocolDeclaration,
+      inheritedTypes: ["BaseClass"]
+    )
+    
+    assertBuildResult(
+      result,
+      """
+      class ServiceSpy: BaseClass, Service, @unchecked Sendable {
+          override init() {
+          }
+          var fetchCallsCount = 0
+          var fetchCalled: Bool {
+              return fetchCallsCount > 0
+          }
+          var fetchClosure: (() -> Void)?
+          func fetch() {
+              fetchCallsCount += 1
+              fetchClosure?()
+          }
+      }
+      """
+    )
+  }
+
+  func testDeclarationWithMultipleInheritedTypes() throws {
+    let protocolDeclaration = try ProtocolDeclSyntax("protocol Service { func fetch() }")
+    
+    let result = try SpyFactory().classDeclaration(
+      for: protocolDeclaration,
+      inheritedTypes: ["testprotocol", "testTwoProtocol"]
+    )
+    
+    assertBuildResult(
+      result,
+      """
+      class ServiceSpy: testprotocol, testTwoProtocol, Service, @unchecked Sendable {
+          override init() {
+          }
+          var fetchCallsCount = 0
+          var fetchCalled: Bool {
+              return fetchCallsCount > 0
+          }
+          var fetchClosure: (() -> Void)?
+          func fetch() {
+              fetchCallsCount += 1
+              fetchClosure?()
+          }
+      }
+      """
+    )
+  }
+
+  func testDeclarationWithEmptyInheritedTypes() throws {
+    let protocolDeclaration = try ProtocolDeclSyntax("protocol Service { func fetch() }")
+    
+    let result = try SpyFactory().classDeclaration(
+      for: protocolDeclaration,
+      inheritedTypes: []
+    )
+    
+    assertBuildResult(
+      result,
+      """
+      class ServiceSpy: Service, @unchecked Sendable {
+          init() {
+          }
+          var fetchCallsCount = 0
+          var fetchCalled: Bool {
+              return fetchCallsCount > 0
+          }
+          var fetchClosure: (() -> Void)?
+          func fetch() {
+              fetchCallsCount += 1
+              fetchClosure?()
+          }
+      }
+      """
+    )
+  }
+
+  func testDeclarationWithThreeInheritedTypes() throws {
+    let protocolDeclaration = try ProtocolDeclSyntax("protocol Service { }")
+    
+    let result = try SpyFactory().classDeclaration(
+      for: protocolDeclaration,
+      inheritedTypes: ["BaseClass", "FirstProtocol", "SecondProtocol"]
+    )
+    
+    assertBuildResult(
+      result,
+      """
+      class ServiceSpy: BaseClass, FirstProtocol, SecondProtocol, Service, @unchecked Sendable {
+          override init() {
+          }
+      }
+      """
+    )
+  }
+
   // MARK: - Helper Methods for Assertions
 
   private func assertProtocol(

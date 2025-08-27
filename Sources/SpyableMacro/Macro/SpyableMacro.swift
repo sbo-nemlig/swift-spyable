@@ -13,10 +13,10 @@ public enum SpyableMacro: PeerMacro {
     // Extract the protocol declaration
     let protocolDeclaration = try extractor.extractProtocolDeclaration(from: declaration)
 
-    // Extract inherited type from the attribute
+    // Extract inherited types from the attribute
     let inheritedTypes = extractor.extractInheritedTypesArray(from: node, in: context)
 
-    // Generate the initial spy class declaration with inherited type
+    // Generate the initial spy class declaration with inherited types
     var spyClassDeclaration = try spyFactory.classDeclaration(
       for: protocolDeclaration,
       inheritedTypes: inheritedTypes

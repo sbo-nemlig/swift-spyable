@@ -116,26 +116,35 @@ struct SpyFactory {
       prefixFactory: variablePrefixFactory
     )
 
+    // Build inheritance list properly
+    var inheritedTypeList: [InheritedTypeSyntax] = []
+    
+    // Add all inherited types first if present
+    if let inheritedTypes {
+      for inheritedType in inheritedTypes {
+        inheritedTypeList.append(InheritedTypeSyntax(
+          type: TypeSyntax(stringLiteral: inheritedType)
+        ))
+      }
+    }
+    
+    // Add the main protocol
+    inheritedTypeList.append(InheritedTypeSyntax(
+      type: TypeSyntax(stringLiteral: protocolDeclaration.name.text)
+    ))
+    
+    // Add @unchecked Sendable
+    inheritedTypeList.append(InheritedTypeSyntax(
+      type: TypeSyntax(stringLiteral: "@unchecked Sendable")
+    ))
+
     return try ClassDeclSyntax(
       name: identifier,
       genericParameterClause: genericParameterClause,
       inheritanceClause: InheritanceClauseSyntax {
-        // Add all inherited types first if present
-        if let inheritedTypes {
-          for t in inheritedTypes {
-            InheritedTypeSyntax(
-              type: TypeSyntax(stringLiteral: t)
-            )
-          }
+        for inheritedType in inheritedTypeList {
+          inheritedType
         }
-
-        // Add the main protocol
-        InheritedTypeSyntax(
-          type: TypeSyntax(stringLiteral: protocolDeclaration.name.text)
-        )
-        InheritedTypeSyntax(
-          type: TypeSyntax(stringLiteral: "@unchecked Sendable")
-        )
       },
       memberBlockBuilder: {
         let initOverrideKeyword: DeclModifierListSyntax = inheritedTypes != nil && !inheritedTypes!.isEmpty ? [DeclModifierSyntax(name: .keyword(.override))] : []
