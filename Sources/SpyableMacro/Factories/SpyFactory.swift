@@ -94,7 +94,8 @@ struct SpyFactory {
 
   func classDeclaration(
     for protocolDeclaration: ProtocolDeclSyntax,
-    inheritedTypes: [String]? = nil
+    inheritedTypes: [String]? = nil,
+    inheritedProtocols: [ProtocolDeclSyntax]? = nil
   ) throws -> ClassDeclSyntax {
     let identifier = TokenSyntax.identifier(protocolDeclaration.name.text + "Spy")
 
@@ -109,24 +110,32 @@ struct SpyFactory {
 
     let functionDeclarations = protocolDeclaration.memberBlock.members
       .compactMap { $0.decl.as(FunctionDeclSyntax.self)?.removingLeadingSpaces }
+    
+    // Collect declarations from inherited protocols
+    var allVariableDeclarations = variableDeclarations
+    var allFunctionDeclarations = functionDeclarations
+    
+    if let inheritedProtocols = inheritedProtocols {
+      for inheritedProtocol in inheritedProtocols {
+        let inheritedVariables = inheritedProtocol.memberBlock.members
+          .compactMap { $0.decl.as(VariableDeclSyntax.self)?.removingLeadingSpaces }
+        let inheritedFunctions = inheritedProtocol.memberBlock.members
+          .compactMap { $0.decl.as(FunctionDeclSyntax.self)?.removingLeadingSpaces }
+        
+        allVariableDeclarations.append(contentsOf: inheritedVariables)
+        allFunctionDeclarations.append(contentsOf: inheritedFunctions)
+      }
+    }
 
     // Create a polymorphism detector that computes prefixes lazily
     let polymorphismDetector = PolymorphismDetector(
-      functions: functionDeclarations,
+      functions: allFunctionDeclarations,
       prefixFactory: variablePrefixFactory
     )
 
-    // Build inheritance list properly
+    // Build inheritance list - only include the main protocol and @unchecked Sendable
+    // Do NOT add inheritedTypes to class inheritance - we copy their content instead
     var inheritedTypeList: [InheritedTypeSyntax] = []
-    
-    // Add all inherited types first if present
-    if let inheritedTypes {
-      for inheritedType in inheritedTypes {
-        inheritedTypeList.append(InheritedTypeSyntax(
-          type: TypeSyntax(stringLiteral: inheritedType)
-        ))
-      }
-    }
     
     // Add the main protocol
     inheritedTypeList.append(InheritedTypeSyntax(
@@ -147,23 +156,23 @@ struct SpyFactory {
         }
       },
       memberBlockBuilder: {
-        let initOverrideKeyword: DeclModifierListSyntax = inheritedTypes != nil && !inheritedTypes!.isEmpty ? [DeclModifierSyntax(name: .keyword(.override))] : []
-
+        // No override needed since we're not inheriting from spy classes
         InitializerDeclSyntax(
-          modifiers: initOverrideKeyword,
           signature: FunctionSignatureSyntax(
             parameterClause: FunctionParameterClauseSyntax(parameters: [])
           ),
           bodyBuilder: {}
         )
 
-        for variableDeclaration in variableDeclarations {
+        // Generate spy content for all variable declarations (current + inherited)
+        for variableDeclaration in allVariableDeclarations {
           try variablesImplementationFactory.variablesDeclarations(
             protocolVariableDeclaration: variableDeclaration
           )
         }
 
-        for functionDeclaration in functionDeclarations {
+        // Generate spy content for all function declarations (current + inherited)
+        for functionDeclaration in allFunctionDeclarations {
           let variablePrefix = polymorphismDetector.getVariablePrefix(for: functionDeclaration)
           let genericTypes = functionDeclaration.genericTypes
           let parameterList = parameterList(
